@@ -1,0 +1,31 @@
+plugins:
+  # Core pipeline functionality
+  - id: workflow-aggregator
+  - id: pipeline
+  - id: workflow-basic-steps
+  - id: workflow-cps
+  - id: workflow-durable-task-step
+  - id: workflow-job
+  - id: workflow-multibranch
+  - id: workflow-scm-step
+  - id: workflow-support
+
+  # SCM (Git) integration
+  - id: git
+  - id: git-client
+  - id: github
+  - id: github-branch-source
+  - id: scm-api
+
+  # UI and visualization
+  - id: pipeline-stage-view
+  - id: pipeline-graph-view
+  - id: blueocean  # optional, modern UI for pipelines
+
+  # Utility plugins
+  - id: credentials
+  - id: configuration-as-code
+  - id: docker-workflow
+  - id: matrix-auth
+  - id: timestamper
+  - id: ansicolor

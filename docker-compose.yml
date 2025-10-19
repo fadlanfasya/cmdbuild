@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  jenkins:
+    build: .
+    container_name: jenkins
+    ports:
+      - "8080:8080"
+      - "50000:50000"
+    volumes:
+      - jenkins_home:/var/jenkins_home
+      - /var/run/docker.sock:/var/run/docker.sock
+      - ./jenkins-plugins.yaml:/usr/share/jenkins/ref/plugins.yaml
+      - ./cmdbuild:/cmdbuild   # folder with CMDBuild.war
+    environment:
+      - JAVA_OPTS=-Djenkins.install.runSetupWizard=false
+      - JENKINS_UC=https://updates.jenkins.io
+      - JENKINS_REF=/usr/share/jenkins/ref
+
+  tomcat:
+    image: tomcat:9.0
+    container_name: tomcat
+    ports:
+      - "8081:8080"
+    volumes:
+      - ./deploy:/usr/local/tomcat/webapps
+    depends_on:
+      - db
+
+  db:
+    image: postgres:13
+    container_name: cmdbuild_db
+    environment:
+      POSTGRES_DB: cmdbuild
+      POSTGRES_USER: cmdbuild
+      POSTGRES_PASSWORD: cmdbuild
+    ports:
+      - "5432:5432"
+    volumes:
+      - db_data:/var/lib/postgresql/data
+
+volumes:
+  jenkins_home:
+  db_data:
