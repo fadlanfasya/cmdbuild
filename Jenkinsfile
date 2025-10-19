@@ -11,20 +11,18 @@ pipeline {
         stage('Deploy WAR') {
             steps {
                 echo 'Deploying CMDBuild.war to Tomcat container...'
-                script {
-                    // Copy the WAR into Tomcat's deployment folder
-                    sh '''
+                sh '''
+                    docker ps | grep tomcat || docker run -d --name tomcat -p 8081:8080 tomcat:9
                     docker cp cmdbuild/CMDBuild.war tomcat:/usr/local/tomcat/webapps/ROOT.war
-                    docker restart tomcat
-                    '''
-                }
+                    docker exec tomcat bash -c "catalina.sh stop && catalina.sh start"
+                '''
             }
         }
 
         stage('Verify Deployment') {
             steps {
                 echo 'Verifying deployment...'
-                sh 'sleep 10 && curl -I http://localhost:8081/'
+                sh 'curl -I http://localhost:8081 | grep "200 OK"'
             }
         }
     }
