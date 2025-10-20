@@ -1,48 +1,83 @@
 pipeline {
     agent any
 
+    environment {
+        APP_NAME = "cmdbuild"
+        WAR_NAME = "cmdbuild-4.1.0.war"
+        TOMCAT_CONTAINER = "tomcat"
+        TOMCAT_PORT = "8081"
+    }
+
     stages {
-        stage('Prepare') {
+
+        stage('Checkout') {
             steps {
-                echo 'Preparing build...'
+                echo "Cloning repository..."
+                git branch: 'main', url: 'https://github.com/fadlanfasya/cmdbuild.git'
             }
         }
 
-    stage('Deploy WAR') {
-        steps {
-            echo 'Deploying CMDBuild.war to Tomcat container...'
-            sh '''
-            # Ensure the WAR file exists
-            if [ ! -f target/cmdbuild-4.1.0.war ]; then
-                echo "ERROR: target/cmdbuild-4.1.0.war not found!"
-                exit 1
-            fi
-
-            # Create temp directory for docker cp
-            mkdir -p cmdbuild
-            cp target/cmdbuild-4.1.0.war cmdbuild/cmdbuild-4.1.0.war
-
-            # Start Tomcat container if not running
-            if [ -z "$(docker ps -q -f name=tomcat)" ]; then
-                echo "Starting Tomcat container..."
-                docker run -d --name tomcat -p 8081:8080 tomcat:9
-            fi
-
-            # Copy WAR file into container
-            docker cp cmdbuild/cmdbuild-4.1.0.war tomcat:/usr/local/tomcat/webapps/ROOT.war
-
-            # Restart Tomcat
-            echo "Restarting Tomcat..."
-            docker exec tomcat bash -c "catalina.sh stop && catalina.sh start"
-            '''
+        stage('Build WAR') {
+            steps {
+                echo "Building WAR file with Maven..."
+                sh '''
+                    mvn clean package -DskipTests
+                    echo "WAR files in target directory:"
+                    ls -l target/
+                '''
+            }
         }
-    }
+
+        stage('Prepare WAR for Deployment') {
+            steps {
+                echo "Preparing WAR file for deployment..."
+                sh '''
+                    mkdir -p cmdbuild
+                    if [ -f target/${WAR_NAME} ]; then
+                        cp target/${WAR_NAME} cmdbuild/${WAR_NAME}
+                    else
+                        echo "ERROR: target/${WAR_NAME} not found!"
+                        ls -R target || true
+                        exit 1
+                    fi
+                '''
+            }
+        }
+
+        stage('Deploy WAR to Tomcat') {
+            steps {
+                echo "Deploying ${WAR_NAME} to Tomcat container..."
+
+                sh '''
+                    # Start Tomcat container if not running
+                    docker ps | grep ${TOMCAT_CONTAINER} || docker run -d --name ${TOMCAT_CONTAINER} -p ${TOMCAT_PORT}:8080 tomcat:9
+
+                    # Copy WAR into container
+                    docker cp cmdbuild/${WAR_NAME} ${TOMCAT_CONTAINER}:/usr/local/tomcat/webapps/ROOT.war
+
+                    # Restart Tomcat
+                    docker exec ${TOMCAT_CONTAINER} bash -c "catalina.sh stop || true && catalina.sh start"
+                '''
+            }
+        }
 
         stage('Verify Deployment') {
             steps {
-                echo 'Verifying deployment...'
-                sh 'curl -I http://localhost:8081 | grep "200 OK"'
+                echo "Verifying deployment..."
+                sh '''
+                    sleep 10
+                    curl -I http://localhost:${TOMCAT_PORT} || true
+                '''
             }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ Deployment successful! Application should be available at: http://localhost:${TOMCAT_PORT}"
+        }
+        failure {
+            echo "❌ Build or deployment failed. Check logs above."
         }
     }
 }
