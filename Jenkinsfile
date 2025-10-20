@@ -1,5 +1,10 @@
 pipeline {
-    agent any
+    agent {
+        docker {
+            image 'maven:3.9.9-eclipse-temurin-17'
+            args '-v /var/run/docker.sock:/var/run/docker.sock'
+        }
+    }
 
     environment {
         APP_NAME = "cmdbuild"
@@ -47,15 +52,11 @@ pipeline {
         stage('Deploy WAR to Tomcat') {
             steps {
                 echo "Deploying ${WAR_NAME} to Tomcat container..."
-
                 sh '''
-                    # Start Tomcat container if not running
                     docker ps | grep ${TOMCAT_CONTAINER} || docker run -d --name ${TOMCAT_CONTAINER} -p ${TOMCAT_PORT}:8080 tomcat:9
 
-                    # Copy WAR into container
                     docker cp cmdbuild/${WAR_NAME} ${TOMCAT_CONTAINER}:/usr/local/tomcat/webapps/ROOT.war
 
-                    # Restart Tomcat
                     docker exec ${TOMCAT_CONTAINER} bash -c "catalina.sh stop || true && catalina.sh start"
                 '''
             }
