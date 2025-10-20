@@ -13,7 +13,7 @@ pipeline {
                 echo 'Deploying CMDBuild.war to Tomcat container...'
                 sh '''
                     docker ps | grep tomcat || docker run -d --name tomcat -p 8081:8080 tomcat:9
-                    docker cp cmdbuild/CMDBuild.war tomcat:/usr/local/tomcat/webapps/ROOT.war
+                    docker cp cmdbuild/cmdbuild-4.1.0.war tomcat:/usr/local/tomcat/webapps/ROOT.war
                     docker exec tomcat bash -c "catalina.sh stop && catalina.sh start"
                 '''
             }
